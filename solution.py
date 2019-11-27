@@ -60,15 +60,15 @@ class Problem:
             # Formatting for BayesNet()
             for meas in meas_t:
                 sensor_room = self.alarms[meas[0]][0]
-                meas.insert(1, '')
-                if meas[2] == 'F':
+
+                if meas[1] == 'F':
                     meas[2] = 0
-                elif meas[2] == 'T':
+                elif meas[1] == 'T':
                     meas[2] = 1
                 else:
                     raise RuntimeError("Bad Format Error")
                 meas[0] = meas[0] + '_' + str(t)
-
+                meas[1] = ''
                 measured_rooms[sensor_room] = meas[0]
                 self.net.add(meas)
                 var.append(meas)
@@ -87,14 +87,14 @@ class Problem:
                 if room_name in measured_rooms.keys():
                     parents.append(measured_rooms[room_name])
 
-                # TODO: Add room inference to net. implies calculating intersection probabilities below:
-                """ P(room_t | room_(t-1)) = 1
-                    P(room_t | adj_room_(t-1)) = P
-                    P(room_t | sx_t) = TPR
-                    P(room_t | ¬sx_t) = FPR """
-
-                self.net.add(room_name + '_' + str(t), parents, {})
-                var.append(room_name + '_' + str(t))
+                if len(parents) > 0:
+                    # TODO: Add room inference to net. implies calculating intersection probabilities below:
+                    """ P(room_t | room_(t-1)) = 1
+                        P(room_t | adj_room_(t-1)) = P
+                        P(room_t | sx_t) = TPR
+                        P(room_t | ¬sx_t) = FPR """
+                    self.net.add(room_name + '_' + str(t), parents, {})
+                    var.append(room_name + '_' + str(t))
 
     def solve(self):
         """ Place here your code to determine the maximum likelihood solution
