@@ -1,5 +1,6 @@
 import probability
 import sys
+from itertools import product
 
 
 class Problem:
@@ -9,6 +10,7 @@ class Problem:
             and use probability.BayesNet() to create the Bayesian network"""
         self.building = {}
         self.alarms = {}
+        self.evidence = {}
         self.p = 1  # Reasonable default
         self.measurements = []
         self.net = probability.BayesNet()
@@ -44,57 +46,45 @@ class Problem:
                 meas_t = []
                 for meas in l_array[1:]:
                     aux = meas.split(':')
-                    aux.append(self.meas_cnt)
                     meas_t.append(aux)
                 self.measurements.append(meas_t)
 
             else:
                 raise RuntimeError("Bad Format Error")
 
-        var = []
         t = 0
         # for each time instant
         for meas_t in self.measurements:
             t += 1
-            measured_rooms = {}
-            # Formatting for BayesNet()
-            for meas in meas_t:
-                sensor_room = self.alarms[meas[0]][0]
-
-                if meas[1] == 'F':
-                    meas[2] = 0
-                elif meas[1] == 'T':
-                    meas[2] = 1
-                else:
-                    raise RuntimeError("Bad Format Error")
-                meas[0] = meas[0] + '_' + str(t)
-                meas[1] = ''
-                measured_rooms[sensor_room] = meas[0]
-                self.net.add(meas)
-                var.append(meas)
-
-            parents = []
-            # Check each room for incoming prob at this, and previous time instants
             for room_name, room in self.building.items():
-                # Check if the room has been estimated at t-1
-                if room_name + '_' + str(t-1) in var:
-                    parents.append(room_name + '_' + str(t-1))
-                # Check if adjacent rooms have been estimated at t-1
-                for adj_room in room.connections:
-                    if adj_room + '_' + str(t-1) in var:
-                        parents.append(adj_room + '_' + str(t-1))
-                # Check if sensor exists at t
-                if room_name in measured_rooms.keys():
-                    parents.append(measured_rooms[room_name])
+                parents = []
+                # unknown prior at start
+                if t == 1:
+                    self.net.add((room_name + '_1', '', 0.5))
+                else:
+                    # Add previous room to parents nodes
+                    parents.append(room_name+'_' + str(t-1))
+                    # Adds adjacent rooms
+                    for adj_room in room.connections:
+                        parents.append(adj_room + '_' + str(t - 1))
+                    # Build truth table
+                    truth_table = {}
+                    for p in product((True, False), repeat=len(parents)):
+                        # previous room on fire
+                        if p[0] is True:
+                            truth_table[p] = 1
+                        else:
+                            truth_table[p] = self.p ** p.count(True) if p.count(True) > 0 else 0
+                    # Add room to net
+                    self.net.add((room_name + '_' + str(t), parents, truth_table))
 
-                if len(parents) > 0:
-                    # TODO: Add room inference to net. implies calculating intersection probabilities below:
-                    """ P(room_t | room_(t-1)) = 1
-                        P(room_t | adj_room_(t-1)) = P
-                        P(room_t | sx_t) = TPR
-                        P(room_t | ¬sx_t) = FPR """
-                    self.net.add(room_name + '_' + str(t), parents, {})
-                    var.append(room_name + '_' + str(t))
+            # Inserts sensor and adds measurement to evidence pool
+            for meas in meas_t:
+                sensor_room = self.alarms[meas[0]][0] + '_' + str(t)
+                # True: TPR , False: FPR
+                self.net.add((meas[0] + '_' + str(t), sensor_room,
+                              {True: float(self.alarms[meas[0]][1]), False: float(self.alarms[meas[0]][2])}))
+                self.evidence[meas[0] + '_' + str(t)] = True if meas[1] == 'T' else False
 
     def solve(self):
         """ Place here your code to determine the maximum likelihood solution
@@ -103,12 +93,14 @@ class Problem:
         likelihood = 0
         highest_p_room = None
 
+        # calculates P(room_fire | sensor_readings)
         for room in self.building.keys():
-            # TODO: seems this only calculates a conditional probability depending on parents nodes
-            res = probability.elimination_ask(room + ' ' + str(self.meas_cnt), ' ', self.net).show_approx()
-            if likelihood <= res.prob:
+            res = float(probability.elimination_ask(room + '_' + str(self.meas_cnt),
+                                              self.evidence, self.net).show_approx().rpartition(' ')[2])
+
+            if likelihood <= res:
                 highest_p_room = room
-                likelihood = res.prob
+                likelihood = res
 
         return highest_p_room, likelihood
 
