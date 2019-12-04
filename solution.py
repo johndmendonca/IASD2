@@ -75,8 +75,7 @@ class Problem:
                         if p[0] is True:
                             truth_table[p] = 1
                         else:
-                            truth_table[p] = sum([(fact(p.count(True))/(fact(k)*fact(p.count(True)-k))) * self.p**k * (1-self.p)**(p.count(True)-k) for k in range(1, p.count(True)+1)])
-                            # truth_table[p] = self.p ** p.count(True) if p.count(True) > 0 else 0
+                            truth_table[p] = self.p if p.count(True) > 0 else 0
                     # Add room to net
                     self.net.add((room_name + '_' + str(t), parents, truth_table))
 
@@ -99,7 +98,6 @@ class Problem:
         for room in self.building.keys():
             res = probability.elimination_ask(room + '_' + str(self.meas_cnt),
                                               self.evidence, self.net)[True]
-
             if likelihood <= res:
                 highest_p_room = room
                 likelihood = res
