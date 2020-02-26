@@ -1,7 +1,7 @@
 # IASD2
 Museum fire Detection
 
-**Explain how the problem was modelled with a Bayesian network.**
+**Problem solution:**
 
 The Bayesian network is constructed in "time-layers", with each layer representing a time instant of a measurement, thus having N layers, with N equaling to T, the number of time instants of measurement in the problem. In each layer, there are two types of nodes: (1) Represents the state of a room (on fire); (2) Represents the state of sensor (active). In (1), the first layer (initial state) contains the prior nodes and (1) have a probability of 0.5 since we do not have any knowledge of the room state (if it is on fire or not).
 
@@ -14,7 +14,7 @@ The truth table of (2) is as follows: if the room the sensor measures is on fire
 In order to calculate the room with the highest probability of being on fire on time instant T, we calculate for each room P(room_T | evidence) using variable elimination function elimination_ask(), with the evidence being the results of the measurements made during the problem.
 
 
-**Perform a quantitative experimental evaluation of the performance improvement achieved by the variable elimination algorithm, when compared to the enumeration one (function enumeration_ask() of probability.py).**
+**Quantitative experimental evaluation of this solution's performance:**
 
 Our solution to the problem using elimination_ask() can correctly solve all of the public tests in 321ms. Meanwhile, the same solution using enumeration_ask() times out. Taking a closer look at each problem being solved, we identified the following tests that the enumeration algorithm wasn't able to solve in a reasonable time: P5_1_8, P4_1_8, P3_1_8, P5_3_4, P3_3_8, P 5_5_4. Removing these from the test pool, elimination finishes in 243 ms while enumeration finishes in 43 271 ms. This corresponds to a significant time reduction, approximately 178 times faster than enumeration.
 
